@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Math Impostor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+color:white;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+.card{
+background:#1e1e2f;
+padding:30px;
+border-radius:15px;
+width:90%;
+max-width:500px;
+text-align:center;
+}
+
+button{
+padding:12px 20px;
+border:none;
+border-radius:10px;
+background:#4CAF50;
+color:white;
+font-size:16px;
+cursor:pointer;
+margin:5px;
+}
+
+button:hover{
+background:#45a049;
+}
+
+input,select{
+padding:10px;
+border-radius:8px;
+border:none;
+margin:5px;
+width:80%;
+}
+
+.hidden{
+display:none;
+}
+
+.playerButton{
+display:block;
+width:100%;
+margin:5px 0;
+}
+
+.timer{
+font-size:22px;
+margin:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+<h1>🧠 Math Impostor</h1>
+
+<div id="setup">
+
+<label>Players (3-20)</label><br>
+<input type="number" id="playerCount" min="3" max="20" value="5"><br>
+
+<label>Number of Impostors</label><br>
+<input type="number" id="impostorCount" min="1" max="5" value="1"><br>
+
+<label>Voting Time (minutes)</label><br>
+<input type="number" id="voteTime" value="2"><br>
+
+<label>Difficulty</label><br>
+
+<select id="difficulty">
+<option value="easy">Easy</option>
+<option value="medium">Medium</option>
+<option value="hard">Hard</option>
+</select>
+
+<br><br>
+
+<button onclick="startNames()">Start Game</button>
+
+</div>
+
+<div id="names" class="hidden">
+
+<h2>Enter Player Names</h2>
+
+<div id="nameInputs"></div>
+
+<button onclick="startReveal()">Continue</button>
+
+</div>
+
+<div id="reveal" class="hidden">
+
+<h2 id="playerTurn"></h2>
+
+<div id="roleBox" style="font-size:28px;margin:20px;"></div>
+
+<button id="showBtn" onclick="showRole()">Show Role</button>
+
+<button id="nextBtn" class="hidden" onclick="nextPlayer()">Next Player</button>
+
+</div>
+
+<div id="voting" class="hidden">
+
+<h2>Vote the Impostor</h2>
+
+<div class="timer" id="timer"></div>
+
+<div id="voteButtons"></div>
+
+</div>
+
+<div id="result" class="hidden">
+
+<h2 id="resultText"></h2>
+
+<button onclick="location.reload()">New Game</button>
+
+</div>
+
+</div>
+
+<script>
+
+let players=[]
+let roles=[]
+let operations=[]
+let impostorIndexes=[]
+let eliminated=[]
+let currentPlayer=0
+let timerInterval
+
+function startNames(){
+
+let count=parseInt(document.getElementById("playerCount").value)
+
+let container=document.getElementById("nameInputs")
+
+container.innerHTML=""
+
+for(let i=0;i<count;i++){
+
+container.innerHTML+=`<input placeholder="Player ${i+1}" id="name${i}"><br>`
+
+}
+
+document.getElementById("setup").classList.add("hidden")
+document.getElementById("names").classList.remove("hidden")
+
+}
+
+function startReveal(){
+
+players=[]
+
+let count=parseInt(document.getElementById("playerCount").value)
+
+for(let i=0;i<count;i++){
+
+let name=document.getElementById("name"+i).value
+
+if(name=="") name="Player "+(i+1)
+
+players.push(name)
+
+}
+
+generateRoles()
+
+document.getElementById("names").classList.add("hidden")
+document.getElementById("reveal").classList.remove("hidden")
+
+updateTurn()
+
+}
+
+function generateRoles(){
+
+roles=new Array(players.length).fill("player")
+
+impostorIndexes=[]
+
+let imp=parseInt(document.getElementById("impostorCount").value)
+
+while(impostorIndexes.length<imp){
+
+let r=Math.floor(Math.random()*players.length)
+
+if(!impostorIndexes.includes(r)){
+
+impostorIndexes.push(r)
+roles[r]="impostor"
+
+}
+
+}
+
+generateOperations()
+
+}
+
+function generateOperations(){
+
+let diff=document.getElementById("difficulty").value
+
+let normal=""
+let impostor=""
+
+if(diff=="easy"){
+
+let a=Math.floor(Math.random()*5)+1
+let b=Math.floor(Math.random()*9)+1
+let c=b+2
+
+normal=`${a}x + ${b}`
+impostor=`${a}x + ${c}`
+
+}
+
+if(diff=="medium"){
+
+let a=Math.floor(Math.random()*7)+1
+let b=Math.floor(Math.random()*10)+1
+let c=b+3
+
+normal=`${a}x - ${b}`
+impostor=`${a}x - ${c}`
+
+}
+
+if(diff=="hard"){
+
+let types=[
+`3(x + 2)`,
+`2x² + 4`,
+`5(x - 3)`,
+`4x + 2 + 6`
+]
+
+normal=types[Math.floor(Math.random()*types.length)]
+
+impostor=normal.replace(/\d+/,n=>parseInt(n)+1)
+
+}
+
+operations=[]
+
+for(let i=0;i<players.length;i++){
+
+if(roles[i]=="impostor") operations.push(impostor)
+else operations.push(normal)
+
+}
+
+}
+
+function updateTurn(){
+
+document.getElementById("roleBox").innerHTML=""
+
+document.getElementById("playerTurn").innerText=players[currentPlayer]+"'s Turn"
+
+document.getElementById("showBtn").classList.remove("hidden")
+document.getElementById("nextBtn").classList.add("hidden")
+
+}
+
+function showRole(){
+
+document.getElementById("roleBox").innerHTML=operations[currentPlayer]
+
+document.getElementById("showBtn").classList.add("hidden")
+document.getElementById("nextBtn").classList.remove("hidden")
+
+}
+
+function nextPlayer(){
+
+currentPlayer++
+
+if(currentPlayer>=players.length){
+
+startVoting()
+
+}else{
+
+updateTurn()
+
+}
+
+}
+
+function startVoting(){
+
+document.getElementById("reveal").classList.add("hidden")
+document.getElementById("voting").classList.remove("hidden")
+
+let container=document.getElementById("voteButtons")
+
+container.innerHTML=""
+
+eliminated=new Array(players.length).fill(false)
+
+players.forEach((p,i)=>{
+
+let btn=document.createElement("button")
+
+btn.innerText=p
+btn.className="playerButton"
+btn.id="voteBtn"+i
+
+btn.onclick=()=>vote(i)
+
+container.appendChild(btn)
+
+})
+
+startTimer()
+
+}
+
+function vote(i){
+
+if(eliminated[i]) return
+
+if(roles[i]=="impostor"){
+
+clearInterval(timerInterval)
+
+document.getElementById("resultText").innerText=`🎉 ${players[i]} WAS the impostor!`
+
+document.getElementById("voting").classList.add("hidden")
+document.getElementById("result").classList.remove("hidden")
+
+return
+
+}
+
+alert(players[i]+" was NOT the impostor.")
+
+eliminated[i]=true
+
+let btn=document.getElementById("voteBtn"+i)
+
+btn.disabled=true
+btn.style.background="#555"
+
+}
+
+function startTimer(){
+
+let minutes=parseInt(document.getElementById("voteTime").value)
+
+let time=minutes*60
+
+timerInterval=setInterval(()=>{
+
+time--
+
+let m=Math.floor(time/60)
+let s=time%60
+
+document.getElementById("timer").innerText="Time: "+m+":"+(s<10?"0"+s:s)
+
+if(time<=0){
+
+clearInterval(timerInterval)
+
+document.getElementById("resultText").innerText="⏰ Time is over! The impostor escaped!"
+
+document.getElementById("voting").classList.add("hidden")
+document.getElementById("result").classList.remove("hidden")
+
+}
+
+},1000)
+
+}
+
+</script>
+
+</body>
+</html>
